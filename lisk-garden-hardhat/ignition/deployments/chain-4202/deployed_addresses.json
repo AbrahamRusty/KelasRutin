@@ -1,3 +1,5 @@
 {
-  "LiskGardenModule#LiskGarden": "0x197C3f3AE40a09d82180D6eAFF1267A78d5165C3"
+  "LiskGardenModule#LiskGarden": "0x124F95C730c0f999944C1D10Eb25E8a29Dd70676",
+  "BasicTokenModule#BasicToken": "0x62fdEf7A17565Ad3910d709345F330D7F9aA9a21",
+  "StandardTokenModule#StandardToken": "0xa535E35C1D26327C853DFb28a76D46B6cbc46aF8"
 }

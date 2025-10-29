@@ -1,13 +1,22 @@
 import { ethers } from "ethers";
+import { network } from "hardhat";
 
 async function main() {
   // Replace with your deployed contract address
-  const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+  const CONTRACT_ADDRESS = "0x124F95C730c0f999944C1D10Eb25E8a29Dd70676";
+
+  // Connect to the network
+  const { viem } = await network.connect();
+  const publicClient = await viem.getPublicClient();
+  const [walletClient] = await viem.getWalletClients();
+
+  // Create a provider and signer
+  const provider = new ethers.JsonRpcProvider("https://rpc.sepolia-api.lisk.com");
+  const signer = new ethers.Wallet(process.env.PRIVATE_KEY!, provider);
 
   // Get contract instance
-  const provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
-  const signer = await provider.getSigner();
   const LiskGarden = new ethers.Contract(CONTRACT_ADDRESS, [
+    // Add the ABI here or load from artifacts
     "function plantCounter() view returns (uint256)",
     "function PLANT_PRICE() view returns (uint256)",
     "function plantSeed() payable",

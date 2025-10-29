@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_30-23ece9722215f8fed7fa55e03b2e7b9a22a6294b",
+  "solcVersion": "0.8.30",
+  "solcLongVersion": "0.8.30+commit.73712a01",
+  "userSourceNameMap": {
+    "contracts/StandardToken.sol": "project/contracts/StandardToken.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "prague",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/StandardToken.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.30;\n\n/**\n * @title StandardToken\n * @dev Token dengan metadata (name, symbol, decimals)\n */\ncontract StandardToken {\n\n    // ============ METADATA ============\n\n    /**\n     * @dev Nama token (contoh: \"Garden Token\")\n     */\n    string public name;\n\n    /**\n     * @dev Symbol token (contoh: \"GDN\")\n     */\n    string public symbol;\n\n    /**\n     * @dev Decimals (biasanya 18, sama seperti ETH)\n     *\n     * Dengan decimals = 18:\n     * 1 token = 1 * 10^18 = 1000000000000000000\n     */\n    uint8 public decimals;\n\n    // ============ BALANCES ============\n\n    mapping(address => uint256) public balances;\n    uint256 public totalSupply;\n\n    // ============ EVENTS ============\n\n    event Transfer(address indexed from, address indexed to, uint256 value);\n\n    // ============ CONSTRUCTOR ============\n\n    constructor(\n        string memory _name,\n        string memory _symbol,\n        uint8 _decimals,\n        uint256 _initialSupply\n    ) {\n        name = _name;\n        symbol = _symbol;\n        decimals = _decimals;\n\n        // Initial supply SUDAH dalam wei\n        // Contoh: 1 juta token = 1_000_000 * 10^18\n        balances[msg.sender] = _initialSupply;\n        totalSupply = _initialSupply;\n\n        emit Transfer(address(0), msg.sender, _initialSupply);\n    }\n\n    // ============ FUNCTIONS ============\n\n    function transfer(address _to, uint256 _value) public returns (bool) {\n        require(balances[msg.sender] >= _value, \"Insufficient balance\");\n        require(_to != address(0), \"Cannot transfer to zero address\");\n\n        balances[msg.sender] -= _value;\n        balances[_to] += _value;\n\n        emit Transfer(msg.sender, _to, _value);\n        return true;\n    }\n\n    function balanceOf(address _owner) public view returns (uint256) {\n        return balances[_owner];\n    }\n}"
+      }
+    }
+  }
+}

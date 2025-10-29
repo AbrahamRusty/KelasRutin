@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_30-44ff2a860fed666ae9b66ec155f3ecf58efbff7c",
+  "solcVersion": "0.8.30",
+  "solcLongVersion": "0.8.30+commit.73712a01",
+  "userSourceNameMap": {
+    "contracts/BasicToken.sol": "project/contracts/BasicToken.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "prague",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/BasicToken.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.30;\n\n/**\n * @title BasicToken\n * @dev Token paling sederhana - hanya transfer\n */\ncontract BasicToken {\n\n    // ============ STATE VARIABLES ============\n\n    /**\n     * @dev Mapping dari address ke balance\n     * Contoh: balances[0x123...] = 1000\n     */\n    mapping(address => uint256) public balances;\n\n    /**\n     * @dev Total supply token\n     */\n    uint256 public totalSupply;\n\n    // ============ EVENTS ============\n\n    /**\n     * @dev Event ketika transfer terjadi\n     */\n    event Transfer(address indexed from, address indexed to, uint256 value);\n\n    // ============ CONSTRUCTOR ============\n\n    /**\n     * @dev Mint initial supply ke creator\n     */\n    constructor(uint256 _initialSupply) {\n        // Semua token ke creator contract\n        balances[msg.sender] = _initialSupply;\n        totalSupply = _initialSupply;\n\n        // Emit transfer dari address(0) = minting\n        emit Transfer(address(0), msg.sender, _initialSupply);\n    }\n\n    // ============ PUBLIC FUNCTIONS ============\n\n    /**\n     * @dev Transfer token ke address lain\n     * @param _to Recipient address\n     * @param _value Jumlah token\n     * @return success True jika berhasil\n     */\n    function transfer(address _to, uint256 _value) public returns (bool success) {\n        // 1. Validasi: punya cukup balance?\n        require(balances[msg.sender] >= _value, \"Insufficient balance\");\n\n        // 2. Validasi: recipient valid?\n        require(_to != address(0), \"Cannot transfer to zero address\");\n\n        // 3. Update balances\n        balances[msg.sender] -= _value;  // Kurangi sender\n        balances[_to] += _value;          // Tambah recipient\n\n        // 4. Emit event\n        emit Transfer(msg.sender, _to, _value);\n\n        // 5. Return success\n        return true;\n    }\n\n    /**\n     * @dev Get balance of address\n     * @param _owner Address to check\n     * @return balance Token balance\n     */\n    function balanceOf(address _owner) public view returns (uint256 balance) {\n        return balances[_owner];\n    }\n}"
+      }
+    }
+  }
+}
