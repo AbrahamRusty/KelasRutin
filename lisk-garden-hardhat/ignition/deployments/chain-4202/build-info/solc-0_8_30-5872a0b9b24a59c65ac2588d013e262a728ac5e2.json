@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_30-5872a0b9b24a59c65ac2588d013e262a728ac5e2",
+  "solcVersion": "0.8.30",
+  "solcLongVersion": "0.8.30+commit.73712a01",
+  "userSourceNameMap": {
+    "contracts/LiskGarden.sol": "project/contracts/LiskGarden.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "prague",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/LiskGarden.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.30;\n\ncontract LiskGarden {\n    enum GrowthStage { SEED, SPROUT, GROWING, BLOOMING }\n\n    struct Plant {\n        uint256 id;\n        address owner;\n        bool exists;\n        bool isAlive;\n        GrowthStage stage;\n        uint256 plantedTime;\n        uint256 lastWatered;\n        uint8 waterLevel;\n    }\n\n    mapping(uint256 => Plant) public plants;\n    mapping(address => uint256[]) private userPlants;\n    uint256 public plantCounter;\n    address public owner;\n\n    uint256 public constant PLANT_PRICE = 0.001 ether;\n    uint256 public constant HARVEST_REWARD = 0.003 ether;\n    uint256 public constant STAGE_DURATION = 1 minutes;\n    uint256 public constant WATER_DEPLETION_TIME = 30 seconds;\n    uint8  public constant WATER_DEPLETION_RATE = 2; // percent per interval\n\n    event PlantSeeded(address indexed owner, uint256 indexed plantId);\n    event PlantWatered(uint256 indexed plantId, uint8 newWaterLevel);\n    event PlantHarvested(uint256 indexed plantId, address indexed owner, uint256 reward);\n    event StageAdvanced(uint256 indexed plantId, GrowthStage newStage);\n    event PlantDied(uint256 indexed plantId);\n\n    constructor() {\n        owner = msg.sender;\n        plantCounter = 0;\n    }\n\n    function plantSeed() external payable returns (uint256) {\n        require(msg.value >= PLANT_PRICE, \"Not enough ETH to plant\");\n\n        plantCounter += 1;\n        uint256 newId = plantCounter;\n\n        Plant memory p = Plant({\n            id: newId,\n            owner: msg.sender,\n            exists: true,\n            isAlive: true,\n            stage: GrowthStage.SEED,\n            plantedTime: block.timestamp,\n            lastWatered: block.timestamp,\n            waterLevel: 100\n        });\n\n        plants[newId] = p;\n        userPlants[msg.sender].push(newId);\n\n        emit PlantSeeded(msg.sender, newId);\n        return newId;\n    }\n\n    function calculateWaterLevel(uint256 plantId) public view returns (uint8) {\n        Plant storage plant = plants[plantId];\n        if (!plant.exists || !plant.isAlive) {\n            return 0;\n        }\n\n        uint256 elapsed = block.timestamp - plant.lastWatered;\n        uint256 intervals = elapsed / WATER_DEPLETION_TIME; \n        uint256 waterLost = intervals * uint256(WATER_DEPLETION_RATE);\n\n        if (waterLost >= plant.waterLevel) {\n            return 0;\n        } else {\n            uint256 newLevel = uint256(plant.waterLevel) - waterLost;\n            if (newLevel > 100) return 100; // safety\n            return uint8(newLevel);\n        }\n    }\n\n    function updateWaterLevel(uint256 plantId) internal {\n        Plant storage plant = plants[plantId];\n        if (!plant.exists || !plant.isAlive) return;\n\n        uint8 current = calculateWaterLevel(plantId);\n        plant.waterLevel = current;\n\n        if (current == 0) {\n            plant.isAlive = false;\n            plant.exists = false; \n            emit PlantDied(plantId);\n        }\n    }\n\n    function waterPlant(uint256 plantId) external {\n        Plant storage plant = plants[plantId];\n        require(plant.exists, \"Plant does not exist\");\n        require(plant.owner == msg.sender, \"Only owner can water\");\n        require(plant.isAlive, \"Plant is dead\");\n\n        updateWaterLevel(plantId);\n        require(plant.isAlive, \"Plant died before watering\");\n\n        plant.waterLevel = 100;\n        plant.lastWatered = block.timestamp;\n\n        emit PlantWatered(plantId, plant.waterLevel);\n\n        updatePlantStage(plantId);\n    }\n\n    function updatePlantStage(uint256 plantId) public {\n        Plant storage plant = plants[plantId];\n        if (!plant.exists || !plant.isAlive) return;\n\n        uint256 elapsed = block.timestamp - plant.plantedTime;\n        uint256 stageIndex = elapsed / STAGE_DURATION;\n\n        if (stageIndex >= 3) {\n            if (plant.stage != GrowthStage.BLOOMING) {\n                plant.stage = GrowthStage.BLOOMING;\n                emit StageAdvanced(plantId, plant.stage);\n            }\n            return;\n        } else {\n            GrowthStage newStage = GrowthStage(uint8(stageIndex));\n            if (newStage != plant.stage) {\n                plant.stage = newStage;\n                emit StageAdvanced(plantId, plant.stage);\n            }\n        }\n    }\n\n    function harvestPlant(uint256 plantId) external {\n        Plant storage plant = plants[plantId];\n        require(plant.exists, \"Plant does not exist\");\n        require(plant.owner == msg.sender, \"Only owner can harvest\");\n        require(plant.isAlive, \"Plant is dead\");\n\n        updateWaterLevel(plantId);\n        require(plant.isAlive, \"Plant died before harvest\");\n\n        updatePlantStage(plantId);\n        require(plant.stage == GrowthStage.BLOOMING, \"Plant not blooming yet\");\n\n        plant.exists = false;\n        plant.isAlive = false;\n\n        emit PlantHarvested(plantId, msg.sender, HARVEST_REWARD);\n\n        require(address(this).balance >= HARVEST_REWARD, \"Contract has insufficient funds for reward\");\n        (bool sent, ) = msg.sender.call{value: HARVEST_REWARD}(\"\");\n        require(sent, \"Failed to transfer reward\");\n    }\n\n  \n    function getPlant(uint256 plantId) external view returns (Plant memory) {\n        Plant storage p = plants[plantId];\n        require(p.id != 0 || p.exists == true || p.lastWatered != 0, \"Plant does not exist\");\n\n        Plant memory m = p;\n        m.waterLevel = calculateWaterLevel(plantId);\n\n        return m;\n    }\n\n    /// @notice Return list of plantIds owned by a user\n    function getUserPlants(address user) external view returns (uint256[] memory) {\n        return userPlants[user];\n    }\n\n    /// @notice Owner withdraw contract balance\n    function withdraw() external {\n        require(msg.sender == owner, \"Only owner\");\n        uint256 bal = address(this).balance;\n        require(bal > 0, \"No funds to withdraw\");\n\n        (bool ok, ) = owner.call{value: bal}(\"\");\n        require(ok, \"Withdraw failed\");\n    }\n\n    receive() external payable {}\n}\n"
+      }
+    }
+  }
+}
