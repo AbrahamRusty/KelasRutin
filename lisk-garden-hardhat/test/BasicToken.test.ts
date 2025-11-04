@@ -1,71 +1,61 @@
-import { expect } from "chai";
-import hre from "hardhat";
+import { network } from "hardhat";
 
-describe("BasicToken", function () {
 
-  async function deployBasicToken() {
-    const [owner, addr1, addr2] = await hre.viem.getWalletClients();
+async function main() {
 
-    const basicToken = await hre.viem.deployContract("BasicToken", [1_000_000n]);
+  const { viem } = await network.connect();
 
-    const publicClient = await hre.viem.getPublicClient();
+  // 1. Dapatkan instance viem dan publicClient
 
-    return { basicToken, owner, addr1, addr2, publicClient };
-  }
+  const publicClient = await viem.getPublicClient();
+  const [senderClient] = await viem.getWalletClients();
 
-  describe("Deployment", function () {
-    it("Should set the right total supply", async function () {
-      const { basicToken } = await deployBasicToken();
+  // Replace with your deployed contract address
+  const CONTRACT_ADDRESS = "0x673433b063cB50D0f738E5B557bf03358A2BD8d7";
 
-      expect(await basicToken.read.totalSupply()).to.equal(1_000_000n);
-    });
+  // 2. Get contract instance
+  const LiskGarden = await viem.getContractAt("LiskGarden", CONTRACT_ADDRESS);
 
-    it("Should assign total supply to owner", async function () {
-      const { basicToken, owner } = await deployBasicToken();
+  console.log("LiskGarden contract:", CONTRACT_ADDRESS);
+  console.log("Using wallet:", senderClient.account.address);
+  console.log("");
 
-      const ownerBalance = await basicToken.read.balanceOf([owner.account.address]);
-      expect(ownerBalance).to.equal(1_000_000n);
-    });
+  // 3. Get plant counter (menggunakan .read)
+  const plantCounter = await LiskGarden.read.plantCounter();
+  console.log("Total plants:", plantCounter.toString());
+
+  // 4. Plant a seed (menggunakan .read dan .write)
+  console.log("\n🌱 Planting a seed...");
+  const plantPrice = await LiskGarden.read.PLANT_PRICE();
+  
+  // Kirim transaksi menggunakan .write
+  const txHash = await LiskGarden.write.plantSeed({ value: plantPrice });
+  
+  console.log("Transaction sent, waiting for confirmation...", txHash);
+  
+  // 5. Cara baru untuk menunggu transaksi
+  await publicClient.waitForTransactionReceipt({ hash: txHash });
+  console.log("✅ Seed planted! Transaction:", txHash);
+
+  // Get new plant ID
+  const newPlantCounter = await LiskGarden.read.plantCounter();
+  const plantId = newPlantCounter;
+  console.log("Your plant ID:", plantId.toString());
+
+  // 6. Get plant details (argumen fungsi read ada di dalam array)
+  const plant = await LiskGarden.read.getPlant([plantId]);
+  
+  console.log("\n🌿 Plant details:");
+  console.log("  - ID:", plant.id.toString());
+  console.log("  - Owner:", plant.owner);
+  console.log("  - Stage:", plant.stage, "(0=SEED, 1=SPROUT, 2=GROWING, 3=BLOOMING)");
+  console.log("  - Water Level:", plant.waterLevel.toString());
+  console.log("  - Is Alive:", plant.isAlive);
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
   });
-
-  describe("Transfers", function () {
-    it("Should transfer tokens between accounts", async function () {
-      const { basicToken, owner, addr1, publicClient } = await deployBasicToken();
-
-      // Transfer 100 tokens dari owner ke addr1
-      const hash = await basicToken.write.transfer([addr1.account.address, 100n]);
-      await publicClient.waitForTransactionReceipt({ hash });
-
-      // Check balances
-      const addr1Balance = await basicToken.read.balanceOf([addr1.account.address]);
-      expect(addr1Balance).to.equal(100n);
-
-      const ownerBalance = await basicToken.read.balanceOf([owner.account.address]);
-      expect(ownerBalance).to.equal(999_900n); // 1M - 100
-    });
-
-    it("Should fail if sender doesn't have enough tokens", async function () {
-      const { basicToken, addr1 } = await deployBasicToken();
-
-      // addr1 punya 0 tokens, coba transfer 100
-      await expect(
-        basicToken.write.transfer([addr1.account.address, 100n], {
-          account: addr1.account,
-        })
-      ).to.be.rejectedWith("Insufficient balance");
-    });
-
-    it("Should emit Transfer events", async function () {
-      const { basicToken, owner, addr1, publicClient } = await deployBasicToken();
-
-      const hash = await basicToken.write.transfer([addr1.account.address, 100n]);
-
-      // Get transaction receipt
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-
-      // Verify event emitted
-      // (Viem automatically parses events)
-      expect(receipt.status).to.equal("success");
-    });
-  });
-});
