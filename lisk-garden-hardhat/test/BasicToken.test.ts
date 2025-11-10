@@ -35,7 +35,6 @@ async function main() {
   
   // 5. Cara baru untuk menunggu transaksi
   await publicClient.waitForTransactionReceipt({ hash: txHash });
-  console.log("✅ Seed planted! Transaction:", txHash);
 
   // Get new plant ID
   const newPlantCounter = await LiskGarden.read.plantCounter();

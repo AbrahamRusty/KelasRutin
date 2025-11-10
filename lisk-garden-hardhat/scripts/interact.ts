@@ -35,7 +35,7 @@ async function main() {
   const plantPrice = await LiskGarden.PLANT_PRICE();
   const tx = await LiskGarden.plantSeed({ value: plantPrice });
   await tx.wait();
-  console.log("✅ Seed planted! Transaction:", tx.hash);
+  console.log("Seed planted! Transaction:", tx.hash);
 
   // Get new plant ID
   const newPlantCounter = await LiskGarden.plantCounter();
